@@ -97,7 +97,7 @@ rm -rf ./tmp/*
 
 process_env_hdfs_dir=`dirname $process_env_hdfs_file`
 hdfs dfs -mkdir -p $process_env_hdfs_dir
-. ./update_pack.sh $(dirname $process_env_hdfs_file)
+. ./shell/update_pack.sh $(dirname $process_env_hdfs_file)
 hdfs dfs -put -f $local_process_dir/data_input/ $hdfs_dir
 
 # 1. Combine all input kaldi data each mapper 

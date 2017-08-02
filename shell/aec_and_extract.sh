@@ -154,9 +154,9 @@ else
 fi
 
 
-cp ./process_env/hisf_linux_aec_4mic .
-cp ./process_env/hisf_config.ini .
-cp ./process_env/hisf.so .
+cp ./process_env/bin/hisf_linux_aec_4mic .
+cp ./process_env/conf/hisf_config.ini .
+cp ./process_env/lib/hisf.so .
 chmod 755 hisf_linux_aec_4mic
 
 

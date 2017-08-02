@@ -44,16 +44,51 @@ else
     exit 1
 fi
 
-# Find all generated combined kaldi data from last step as the input for next steps
-perturb_input=${local_process_dir}/tmp/all_combined_kaldi_data_input                        #the name of combined_kaldi_data list 
-perturb_input_name=`basename $perturb_input`                                                #the real name(with out the path) of the list file
+input_file_list=`basename $kaldi_data_and_wave_chunk_list`
+if [[ ! -f $kaldi_data_and_wave_chunk_list ]]; then
+    echo "Could not find the input with HDFS kaldi data and wave chunk information."
+    exit 1
+fi
 
-output_mapred_log=$hdfs_dir/tmp
-hdfs dfs -rm -r ${output_mapred_log}/aec_and_extract
-#aec_and_extract.sh
+if [[ $width = 40 ]]; then
+    fbank_config="${local_process_dir}/conf/fbank_40.conf"
+elif [[ $width = 80 ]]; then
+    fbank_config="${local_process_dir}/conf/fbank_80.conf"
+else
+    echo "Not support feature dimension: $width"
+    exit 1
+fi
+
+if [[ $need_convert_alignment = false ]]; then
+    num_pdf=2831
+else
+    num_pdf=6037
+fi
+
+process_env_hdfs_dir=`dirname $process_env_hdfs_file`
+. ./update_pack.sh $(dirname $process_env_hdfs_file)
+
+hdfs dfs -rm -r $output_mapred_log/aec_and_extract
+
+snrs=0
 yarn jar /usr/hdp/2.5.0.0-1245/hadoop-mapreduce/hadoop-streaming.jar                  \
+-D mapred.line.input.format.linespermap=1                                             \
 -D mapred.task.timeout=60000000                                                       \
 -D mapred.max.map.failures.percent=5                                                  \
+-D mapred.map.max.attempts=1                                                          \
 -D mapred.job.queue.name=$queue                                                       \
+-archives     ${process_env_hdfs_file}#process_env,${hdfs_aec_noise_tar}#perturb_data \
+-files        $alignment_resource                                                     \
+-input        $hdfs_dir/data_input/all_combined_kaldi_data_input_ratio_${perturb_ratio}       \
+-inputformat  org.apache.hadoop.mapred.lib.NLineInputFormat                           \
 -output       $output_mapred_log/aec_and_extract                                      \
--mapper       "getconf ARG_MAX"
+-mapper       "./process_env/shell/aec_and_extract.sh                   \
+                --fbank-config            $fbank_config                 \
+                --random-seed             $random_seed                  \
+                --output-perturb-path     $hdfs_dir/tmp/kaldi_dir_out   \
+                --snrs                    $snrs                         \
+                --max-noise-per-minute    $max_noise_per_minute         \
+                --hdfs-rir-noise-tar-dir  $hdfs_aec_noise_tar           \
+                --output-fbank-dir        $hdfs_dir/tmp/fbank_out       \
+                --hdfs-dir                $hdfs_dir                     \
+                --output-fbank-log        $hdfs_dir/tmp/log_out"
